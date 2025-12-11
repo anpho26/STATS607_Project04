@@ -1,5 +1,5 @@
 # --- Python basics ---
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *.pyo
 *.pyd
@@ -16,7 +16,7 @@ dist/
 .eggs/
 
 # Jupyter
-.ipynb_checkpoints/
+**/.ipynb_checkpoints/
 
 # IDE / editor cruft
 .vscode/
@@ -37,9 +37,12 @@ dist/
 .coverage
 htmlcov/
 
-# Figures and generated output (optional)
-figures/
+# output
 out/
 
 # Large raw data (if you end up having any)
 data/raw/
+
+# Profiling outputs
+*.prof
+*.stats

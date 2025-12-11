@@ -88,7 +88,7 @@ def dic_curve(
         DIC(kappa) = - ( d^(kappa) + omega_n * ell^(kappa) ),
 
     where:
-      - d^(kappa) is the merge height at that stage (0 for the initial level),
+      - d^(kappa) is the merge height of the kappa-th level (the distance of the merge from G^(kappa) to G^(kappa-1)),
       - ell^(kappa) is the average log-likelihood at that stage,
       - omega_n = log(n) by default.
 
@@ -125,24 +125,30 @@ def dic_curve(
             f"Unsupported omega={omega!r}. Use 'logn' or a float."
         )
 
-    k0 = dendrogram.n_initial_components
+    ks: list[int] = []
+    dic_vals: list[float] = []
 
-    ks = []
-    dic_vals = []
+    # heights[i] is the merge height recorded when going from
+    # measures[i] (with k_i components) to measures[i+1] (with k_i-1 components).
+    # For a level with k components (kappa), d_n^(kappa) is exactly this merge
+    # height; see Algorithm 2. There is no d_n^(1) since we do not merge further
+    # from k=1.
+    heights = np.asarray(dendrogram.heights, dtype=float)
 
-    # measures[0] has k0 components, measures[t] has k0 - t components
-    # heights[t-1] is the merge height that produced measures[t]
     for idx, mm in enumerate(dendrogram.measures):
         k = mm.n_components
         ks.append(k)
 
-        if idx == 0:
-            height = 0.0  # no merge yet
+        # For k >= 2 we have an associated merge height, stored at heights[idx].
+        # For k = 1 (idx == len(heights)), we set d^(1) = 0.0; DIC is not
+        # formally used for k=1 but we return it for completeness.
+        if idx < len(heights):
+            d_kappa = float(heights[idx])
         else:
-            height = dendrogram.heights[idx - 1]
+            d_kappa = 0.0
 
         ell = log_likelihood_gaussian(X, mm, average=True)
-        dic = - (height + omega_n * ell)
+        dic = - (d_kappa + omega_n * ell)
         dic_vals.append(dic)
 
     return np.array(ks, dtype=int), np.array(dic_vals, dtype=float)
@@ -168,5 +174,14 @@ def select_k_dic(ks: np.ndarray, dic_values: np.ndarray) -> int:
         raise ValueError(
             f"ks and dic_values must have same shape, got {ks.shape} and {dic_values.shape}."
         )
-    idx = int(np.argmin(dic_values))
+    # DIC is defined for kappa in {2, ..., k}. We therefore restrict the
+    # minimization to ks >= 2 so that k=1 is never selected.
+    mask = ks >= 2
+    if not np.any(mask):
+        # Fallback: if all ks < 2 (degenerate case), minimize over all ks.
+        idx = int(np.argmin(dic_values))
+    else:
+        idx_masked = int(np.argmin(dic_values[mask]))
+        # map back to original indices
+        idx = int(np.flatnonzero(mask)[idx_masked])
     return int(ks[idx])
