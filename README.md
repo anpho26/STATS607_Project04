@@ -140,7 +140,11 @@ This repository implements:
   - automatic selection of $ k $
 - Visualization tools for:
   - dendrograms,
-  - DIC curves.
+  - DIC curves
+- Simulation and evaluation scripts for:
+  - convergence of DIC-based selection in strongly/weakly identifiable regimes,
+  - model selection under well-specified, ε-contamination, and skew-normal mixtures,
+  - comparing AIC, BIC, and DIC in both serial and parallel implementations.
 
 ### Intended workflow
 
@@ -155,14 +159,14 @@ This repository implements:
 
 ## Bayesian extension
 
-Instead of using a single MLE mixing measure:
+Instead of using a single MLE mixing measure, one can:
 
-- Fit a Bayesian mixture model with large $ k $
-- Sample posterior mixing measures
-- Apply the dendrogram algorithm to posterior draws
-- Obtain:
-  - distribution over selected $ k $,
-  - posterior uncertainty over hierarchies.
+- fit a Bayesian mixture model with a large number of components,
+- sample posterior mixing measures,
+- apply the dendrogram algorithm to posterior draws, and
+- obtain a distribution over selected $ k $ and over hierarchical structures.
+
+A full Bayesian implementation is left as future work; this project focuses primarily on the frequentist (MLE-based) setting but is designed so that posterior mixing measures could be plugged in with minimal changes.
 
 ---
 
@@ -182,8 +186,16 @@ pip install -r requirements.txt
 
 ## Quick Demo
 
+After installation and activating the virtual environment, you can run the synthetic demo either directly:
+
 ```bash
 python examples/demo_synthetic.py
+```
+
+or via the Makefile:
+
+```bash
+make figs-demo
 ```
 
 This script demonstrates the full workflow:
@@ -194,9 +206,93 @@ This script demonstrates the full workflow:
 - construct the dendrogram of mixing measures,
 - compute DIC along the dendrogram,
 - report a suggested number of components,
-- visualize the dendrogram and DIC curve.
+- save a figure with the dendrogram and DIC curve to:
+- `out/figures/demo_synthetic_dendrogram_dic.png`.
+---
 
-The demo is designed to run in under 30 minutes on a standard laptop.
+## Reproducing Experiments
+
+### Convergence analysis
+
+The convergence experiments study how the DIC-based selected number of components behaves across sample sizes in:
+
+- a strongly identifiable regime, and
+- a weakly identifiable regime.
+
+They are implemented in:
+
+```bash
+python examples/experiment_convergence_strong.py
+python examples/experiment_convergence_weak.py
+```
+
+Each script saves a figure under `out/figures/`:
+
+- `convergence_strong_all_four.png`
+- `convergence_weak_all_four.png`
+
+### Model selection and misspecification
+
+The model-selection experiments compare AIC, BIC, and DIC in three regimes:
+
+- well-specified Gaussian mixture (true $k_0 = 2$),
+- ε-contamination of a Gaussian mixture,
+- skew-normal mixture.
+
+Serial implementation:
+
+```bash
+python examples/experiment_model_selection.py
+```
+
+Parallel implementation (joblib):
+
+```bash
+python examples/experiment_model_selection_parallel.py
+```
+
+For each regime, the scripts produce:
+
+- panel (a): histogram of the data with the true density,
+- panel (b): dendrogram of an overfitted Gaussian mixture with 10 atoms,
+- panel (c): proportion of correctly selecting $k_0$ as a function of $n$,
+- panel (d): average selected number of components as a function of $n$.
+
+Output figures are saved under `out/figures/` with names such as:
+
+- `well_hist_true_density.png`, `well_dendrogram_k10.png`,
+- `model_selection_well_specified_k2.png`,
+- and analogous files for the ε-contamination and skew-normal cases, as well as their `_parallel` counterparts.
+
+### Profiling serial vs parallel
+
+To compare the runtime of the serial and parallel implementations, use:
+
+```bash
+python examples/profile_model_selection.py
+```
+
+This script runs a reduced grid of sample sizes and replications, and reports:
+
+- wall-clock time for the serial vs parallel experiments, and
+- simple checks that their Monte Carlo estimates are numerically consistent.
+
+---
+
+## Using the Makefile
+
+For convenience, a `Makefile` is provided in the project root. Common targets:
+
+```bash
+make install                      # create .venv and install dependencies
+make figs                         # run all figure-generating scripts
+make figs-demo                    # run the synthetic demo only
+make figs-convergence             # run convergence experiments (strong + weak)
+make figs-model-selection         # run serial model-selection experiments
+make figs-model-selection-parallel  # run parallel model-selection experiments
+make profile                      # profile serial vs parallel runtimes
+make clean                        # remove generated outputs and caches
+```
 
 ---
 
@@ -205,49 +301,23 @@ The demo is designed to run in under 30 minutes on a standard laptop.
 ```
 STATS607_Project04/
 ├── src/dmm/
-│   ├── mixing_measure.py   # representation of a discrete mixing measure
-│   ├── dendrogram.py       # Algorithms 1–2 (merging + dendrogram)
-│   ├── dic.py              # likelihood + DIC utilities
+│   ├── mixing_measure.py            # representation of a discrete mixing measure
+│   ├── dendrogram.py                # Algorithms 1–2 (merging + dendrogram)
+│   ├── dic.py                       # likelihood + DIC utilities
 │   └── __init__.py
 ├── examples/
-│   └── demo_synthetic.py   # self-contained example script
-├── notebooks/              # exploratory analysis
-├── tests/                  # (optional) unit tests
+│   ├── demo_synthetic.py            # self-contained demo script
+│   ├── experiment_convergence_strong.py  # convergence in strongly identifiable regime
+│   ├── experiment_convergence_weak.py    # convergence in weakly identifiable regime
+│   ├── experiment_model_selection.py     # serial AIC/BIC/DIC experiments
+│   ├── experiment_model_selection_parallel.py  # parallel AIC/BIC/DIC experiments
+│   └── profile_model_selection.py         # serial vs parallel profiling
+├── out/
+│   └── figures/                     # generated figures (not tracked by git)
+├── notebooks/                       # exploratory analysis
+├── tests/                           # (optional) unit tests
+├── Makefile
 ├── requirements.txt
 ├── README.md
-└── report-PHO.pdf          # final project report
+└── report-PHO.pdf                   # final project report
 ```
-
----
-
-## Course Concepts Used
-
-This project uses tools and ideas from STAT 607, including:
-
-- version control with Git and GitHub,
-- modular software design in Python,
-- numerical linear algebra (covariance operations),
-- likelihood-based model comparison,
-- reproducible research workflows,
-- simulation-based validation.
-
----
-
-## Lessons Learned (to be updated at submission)
-
-Planned reflection points:
-
-- challenges in implementing numerically stable merging rules,
-- computational complexity of quadratic pairwise distance evaluation,
-- careful handling of covariance structure in Gaussian merging,
-- differences between frequentist and Bayesian overfitting behavior,
-- tradeoffs between model flexibility and interpretability.
-
----
-
-## Citation
-
-If you use or reference this repository, please cite:
-
-Dat Do, Linh Do, Scott McKinley, Jonathan Terhorst, XuanLong Nguyen (2024).  
-*Dendrogram of mixing measures: Hierarchical clustering and model selection for finite mixture models.*

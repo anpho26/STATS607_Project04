@@ -155,7 +155,13 @@ def main() -> None:
     ax1.legend()
 
     fig.tight_layout()
-    plt.show()
+
+    # Save figure instead of displaying it
+    out_dir = PROJECT_ROOT / "out" / "figures"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "demo_synthetic_dendrogram_dic.png"
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 if __name__ == "__main__":

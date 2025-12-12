@@ -332,7 +332,13 @@ def main() -> None:
     plt.title("(a) Strongly identifiable setting")
     plt.legend(fontsize=8)
     plt.tight_layout()
-    plt.show()
+
+    # Save figure instead of displaying it
+    out_dir = PROJECT_ROOT / "out" / "figures"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "convergence_strong_all_four.png"
+    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close()
 
 
 if __name__ == "__main__":

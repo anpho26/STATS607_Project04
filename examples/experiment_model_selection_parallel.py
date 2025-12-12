@@ -14,7 +14,188 @@ from numpy.typing import ArrayLike
 from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 
-from scipy.stats import laplace
+from scipy.stats import laplace, norm
+from scipy.cluster.hierarchy import linkage, dendrogram as h_dendrogram
+# ============================================================
+# 2.4. ILLUSTRATIONS FOR WELL-SPECIFIED AND SKEW-NORMAL REGIMES
+# ============================================================
+
+def plot_well_hist_and_dendrogram(
+    cfg: WellSpecifiedConfig,
+    n: int = 200,
+    seed: int = 123,
+) -> None:
+    """Panels (a) and (b) for the well-specified Gaussian mixture."""
+    rng = np.random.default_rng(seed)
+
+    # sample from the true well-specified Gaussian mixture
+    X = sample_gaussian_mixture_1d(n, cfg.weights, cfg.means, cfg.sigmas, rng)
+    x_flat = X.ravel()
+
+    # grid for true density
+    x_min, x_max = x_flat.min() - 1.0, x_flat.max() + 1.0
+    xx = np.linspace(x_min, x_max, 400)
+
+    # true Gaussian mixture density
+    base_pdf = np.zeros_like(xx)
+    for w, m, s in zip(cfg.weights, cfg.means, cfg.sigmas):
+        base_pdf += w * norm.pdf(xx, loc=m, scale=s)
+
+    out_dir = PROJECT_ROOT / "out" / "figures"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # (a) histogram + true density
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.hist(x_flat, bins=40, density=True, alpha=0.5,
+            color="tab:red", edgecolor="none")
+    ax.plot(xx, base_pdf, color="tab:blue", linewidth=1.5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("density")
+    ax.set_title("(a) Well-specified: histogram with true density")
+    fig.tight_layout()
+    fig.savefig(out_dir / "well_hist_true_density_parallel.png",
+                dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    # (b) dendrogram of overfitted GMM with K_MAX atoms
+    gmm = fit_gmm_for_k(X, k=K_MAX, rng=rng)
+    means = gmm.means_.ravel()
+    Z = linkage(means[:, None], method="average")
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+    h_dendrogram(Z, ax=ax, labels=np.arange(K_MAX))
+    ax.set_xlabel("Initial component index")
+    ax.set_ylabel("Merge height")
+    ax.set_title("(b) Well-specified: dendrogram of mixing measure with 10 atoms")
+    fig.tight_layout()
+    fig.savefig(out_dir / "well_dendrogram_k10_parallel.png",
+                dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _skew_pdf(x: np.ndarray, xi: float, omega: float, alpha: float) -> np.ndarray:
+    """Skew-normal density SN(xi, omega, alpha) at x."""
+    z = (x - xi) / omega
+    return (2.0 / omega) * norm.pdf(z) * norm.cdf(alpha * z)
+
+
+def plot_skew_hist_and_dendrogram(
+    cfg: SkewNormalConfig,
+    n: int = 200,
+    seed: int = 123,
+) -> None:
+    """Panels (a) and (b) for the skew-normal mixture."""
+    rng = np.random.default_rng(seed)
+
+    # sample from the true skew-normal mixture
+    X = sample_skew_mixture_1d(n, cfg, rng)
+    x_flat = X.ravel()
+
+    # grid for true density
+    x_min, x_max = x_flat.min() - 1.0, x_flat.max() + 1.0
+    xx = np.linspace(x_min, x_max, 400)
+
+    # true skew-normal mixture density
+    base_pdf = np.zeros_like(xx)
+    for w, xi, om, al in zip(cfg.weights, cfg.xi, cfg.omega, cfg.alpha):
+        base_pdf += w * _skew_pdf(xx, xi, om, al)
+
+    out_dir = PROJECT_ROOT / "out" / "figures"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # (a) histogram + true density
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.hist(x_flat, bins=40, density=True, alpha=0.5,
+            color="tab:red", edgecolor="none")
+    ax.plot(xx, base_pdf, color="tab:blue", linewidth=1.5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("density")
+    ax.set_title("(a) Skew-normal mixture: histogram with true density")
+    fig.tight_layout()
+    fig.savefig(out_dir / "skew_hist_true_density_parallel.png",
+                dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    # (b) dendrogram of overfitted GMM with K_MAX atoms
+    gmm = fit_gmm_for_k(X, k=K_MAX, rng=rng)
+    means = gmm.means_.ravel()
+    Z = linkage(means[:, None], method="average")
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+    h_dendrogram(Z, ax=ax, labels=np.arange(K_MAX))
+    ax.set_xlabel("Initial component index")
+    ax.set_ylabel("Merge height")
+    ax.set_title("(b) Skew-normal mixture: dendrogram of mixing measure with 10 atoms")
+    fig.tight_layout()
+    fig.savefig(out_dir / "skew_dendrogram_k10_parallel.png",
+                dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+# ============================================================
+# 2.5. ILLUSTRATION FOR EPS-CONTAMINATION (PANELS (a) AND (b))
+# ============================================================
+
+def plot_eps_contam_hist_and_dendrogram(
+    cfg: EpsContamConfig,
+    n: int = 200,
+    seed: int = 123,
+) -> None:
+    """Draw panels (a) and (b) for the ε-contamination experiment.
+
+    (a) Histogram with true density of the contaminated distribution.
+    (b) Dendrogram of the overfitted mixing measure with k_max components.
+
+    The figures are saved under out/figures/ as PNG files.
+    """
+    rng = np.random.default_rng(seed)
+
+    # --- sample a dataset from the ε-contamination model ---
+    X = sample_eps_contamination(n, cfg, rng)
+    x_flat = X.ravel()
+
+    # grid for true density
+    x_min, x_max = x_flat.min() - 1.0, x_flat.max() + 1.0
+    xx = np.linspace(x_min, x_max, 400)
+
+    # base Gaussian mixture density
+    base_pdf = (
+        cfg.weights[0] * norm.pdf(xx, loc=cfg.means[0], scale=cfg.sigmas[0])
+        + cfg.weights[1] * norm.pdf(xx, loc=cfg.means[1], scale=cfg.sigmas[1])
+    )
+    # contaminated density: (1-ε) * base + ε * Laplace
+    p0_pdf = (1 - cfg.eps) * base_pdf + cfg.eps * laplace.pdf(
+        xx, loc=cfg.laplace_loc, scale=cfg.laplace_scale
+    )
+
+    out_dir = PROJECT_ROOT / "out" / "figures"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- (a) Histogram with true density ---
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.hist(x_flat, bins=40, density=True, alpha=0.5, color="tab:red", edgecolor="none")
+    ax.plot(xx, p0_pdf, color="tab:blue", linewidth=1.5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("density")
+    ax.set_title("(a) ε-contamination: histogram with true density")
+    fig.tight_layout()
+    fig.savefig(out_dir / "eps_contam_hist_true_density_parallel.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    # --- (b) Dendrogram of mixing measure with k_max atoms ---
+    gmm = fit_gmm_for_k(X, k=K_MAX, rng=rng)
+    means = gmm.means_.ravel()  # shape (K_MAX,), 1D component locations
+
+    # Perform agglomerative clustering on component means
+    Z = linkage(means[:, None], method="average")
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+    h_dendrogram(Z, ax=ax, labels=np.arange(K_MAX))
+    ax.set_xlabel("Initial component index")
+    ax.set_ylabel("Merge height")
+    ax.set_title("(b) ε-contamination: dendrogram of mixing measure with 10 atoms")
+    fig.tight_layout()
+    fig.savefig(out_dir / "eps_contam_dendrogram_k10_parallel.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 from sklearn.mixture import GaussianMixture
 
@@ -413,7 +594,8 @@ def run_experiment_parallel(
 # ============================================================
 
 if __name__ == "__main__":
-    # Well-specified Gaussian mixture (k0 = 2)
+    # Well-specified Gaussian mixture (k0 = 2): (a),(b),(c),(d)
+    plot_well_hist_and_dendrogram(CFG_WELL, n=200, seed=123)
     res_well = run_experiment_parallel("well")
     plot_selection_results(
         res_well,
@@ -421,7 +603,8 @@ if __name__ == "__main__":
         "model_selection_well_specified_k2_parallel.png",
     )
 
-    # ε-contamination experiment
+    # ε-contamination: (a),(b),(c),(d)
+    plot_eps_contam_hist_and_dendrogram(CFG_EPS, n=200, seed=456)
     res_eps = run_experiment_parallel("eps")
     plot_selection_results(
         res_eps,
@@ -429,7 +612,8 @@ if __name__ == "__main__":
         "model_selection_eps_contamination_parallel.png",
     )
 
-    # Skew-normal experiment
+    # Skew-normal mixture: (a),(b),(c),(d)
+    plot_skew_hist_and_dendrogram(CFG_SKEW, n=200, seed=789)
     res_skew = run_experiment_parallel("skew")
     plot_selection_results(
         res_skew,
