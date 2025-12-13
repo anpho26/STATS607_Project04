@@ -1,4 +1,3 @@
-# examples/sim_dic_misspecified.py
 from __future__ import annotations
 
 from pathlib import Path

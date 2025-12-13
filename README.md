@@ -186,7 +186,20 @@ pip install -r requirements.txt
 
 ## Quick Demo
 
-After installation and activating the virtual environment, you can run the synthetic demo either directly:
+After installation and activating the virtual environment, the main demo for this project is the Makefile target:
+
+```bash
+make figs
+```
+
+This single command orchestrates the full workflow:
+
+- runs the synthetic dendrogram + DIC example,
+- runs the convergence experiments (strongly and weakly identifiable regimes),
+- runs the model-selection experiments (well-specified, $\epsilon$-contamination, and skew-normal) in both serial and parallel implementations,
+- saves all figures under `out/figures/`.
+
+If you only want the small synthetic example, you can run the lightweight demo either directly:
 
 ```bash
 python examples/demo_synthetic.py
@@ -198,15 +211,8 @@ or via the Makefile:
 make figs-demo
 ```
 
-This script demonstrates the full workflow:
+This script demonstrates the basic workflow on a single finite Gaussian mixture and saves a figure with the dendrogram and DIC curve to:
 
-- simulate data from a finite Gaussian mixture,
-- fit an overfitted mixture model,
-- extract the estimated mixing measure,
-- construct the dendrogram of mixing measures,
-- compute DIC along the dendrogram,
-- report a suggested number of components,
-- save a figure with the dendrogram and DIC curve to:
 - `out/figures/demo_synthetic_dendrogram_dic.png`.
 ---
 

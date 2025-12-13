@@ -1,4 +1,3 @@
-# examples/profile_model_selection.py
 from __future__ import annotations
 
 import time

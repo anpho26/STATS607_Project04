@@ -1,6 +1,3 @@
-# Makefile for STATS607_Project04
-
-# Use the project-local virtual environment
 PYTHON := .venv/bin/python
 
 .PHONY: help venv install \
