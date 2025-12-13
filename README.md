@@ -320,8 +320,6 @@ STATS607_Project04/
 │   └── profile_model_selection.py         # serial vs parallel profiling
 ├── out/
 │   └── figures/                     # generated figures (not tracked by git)
-├── notebooks/                       # exploratory analysis
-├── tests/                           # (optional) unit tests
 ├── Makefile
 ├── requirements.txt
 ├── README.md
